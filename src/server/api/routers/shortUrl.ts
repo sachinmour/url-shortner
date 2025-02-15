@@ -9,6 +9,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
+import { checkRateLimit } from "~/server/ratelimit";
 
 const createUrlSchema = z.object({
   longUrl: z.string().url(),
@@ -59,6 +60,13 @@ export const shortUrlRouter = createTRPCRouter({
   getBySlug: publicProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
+      // Rate limit based on IP from headers
+      const ip =
+        ctx.headers.get("x-forwarded-for")?.split(",")[0] ??
+        ctx.headers.get("x-real-ip") ??
+        "anonymous";
+      const identifier = `redirect_${ip}`;
+      await checkRateLimit(identifier);
       const shortUrl = await ctx.db.shortUrl.update({
         where: { slug: input.slug },
         data: {
@@ -79,6 +87,13 @@ export const shortUrlRouter = createTRPCRouter({
   create: publicProcedure
     .input(createUrlSchema)
     .mutation(async ({ ctx, input }) => {
+      // Rate limit based on user ID or IP from headers
+      const ip =
+        ctx.headers.get("x-forwarded-for")?.split(",")[0] ??
+        ctx.headers.get("x-real-ip") ??
+        "anonymous";
+      const identifier = ctx.session?.user?.id ?? `ip_${ip}`;
+      await checkRateLimit(identifier);
       // Generate a unique slug
       const slug = nanoid(6); // 6 characters is a good balance between length and uniqueness
 
@@ -128,6 +143,8 @@ export const shortUrlRouter = createTRPCRouter({
   createWithCustomSlug: protectedProcedure
     .input(createCustomUrlSchema)
     .mutation(async ({ ctx, input }) => {
+      // Rate limit based on user ID
+      await checkRateLimit(ctx.session.user.id);
       try {
         // Check if slug is already taken
         const existing = await ctx.db.shortUrl.findUnique({
