@@ -6,6 +6,7 @@ import { type Metadata } from "next";
 import { TRPCReactProvider } from "~/trpc/react";
 import { auth } from "~/server/auth";
 import { SessionProvider } from "~/app/_components/SessionProvider";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
@@ -24,6 +25,7 @@ export default async function RootLayout({
         <SessionProvider session={session}>
           <TRPCReactProvider>{children}</TRPCReactProvider>
         </SessionProvider>
+        <Toaster />
       </body>
     </html>
   );
