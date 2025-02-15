@@ -23,19 +23,28 @@ export default async function Home() {
             <UrlShortenerForm />
           </div>
 
-          {!session && (
-            <div className="mt-8 text-center">
-              <p className="mb-4 text-gray-300">
-                Sign in to access more features like custom URLs and analytics
-              </p>
+          <div className="mt-8 text-center">
+            {session ? (
               <Link
-                href="/api/auth/signin"
+                href="/dashboard"
                 className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
               >
-                Sign in
+                Go to Dashboard
               </Link>
-            </div>
-          )}
+            ) : (
+              <>
+                <p className="mb-4 text-gray-300">
+                  Sign in to access more features like custom URLs and analytics
+                </p>
+                <Link
+                  href="/api/auth/signin"
+                  className="rounded-full bg-white/10 px-10 py-3 font-semibold no-underline transition hover:bg-white/20"
+                >
+                  Sign in
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </main>
     </HydrateClient>

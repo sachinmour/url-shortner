@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   app:
     build:
@@ -13,6 +12,7 @@ services:
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://urlshortener:development@postgres:5432/urlshortener
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
       - REDIS_URL=redis://redis:6379
       - AUTH_SECRET=2zlB6jZdPPjsyT8z7p+ugNmgNIvT4iMGdgbY+uIP04A=
       - AUTH_URL=http://localhost:3000

@@ -27,6 +27,35 @@ const createCustomUrlSchema = z.object({
 });
 
 export const shortUrlRouter = createTRPCRouter({
+  delete: protectedProcedure
+    .input(z.object({ slug: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const url = await ctx.db.shortUrl.findUnique({
+        where: { slug: input.slug },
+        select: { createdById: true },
+      });
+
+      if (!url) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "URL not found",
+        });
+      }
+
+      if (url.createdById !== ctx.session.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only delete your own URLs",
+        });
+      }
+
+      await ctx.db.shortUrl.delete({
+        where: { slug: input.slug },
+      });
+
+      return { success: true };
+    }),
+
   getBySlug: publicProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
