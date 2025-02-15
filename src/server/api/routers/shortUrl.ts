@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { Prisma } from "@prisma/client";
+import { isReservedSlug } from "~/utils/reserved-slugs";
 
 import {
   createTRPCRouter,
@@ -19,7 +20,10 @@ const createCustomUrlSchema = z.object({
     .string()
     .min(3)
     .max(20)
-    .regex(/^[a-zA-Z0-9-_]+$/),
+    .regex(/^[a-zA-Z0-9-_]+$/)
+    .refine((slug) => !isReservedSlug(slug), {
+      message: "This slug is reserved and cannot be used",
+    }),
 });
 
 export const shortUrlRouter = createTRPCRouter({
@@ -68,7 +72,7 @@ export const shortUrlRouter = createTRPCRouter({
           });
         }
 
-        const shortUrlString = `${process.env.NEXT_PUBLIC_APP_URL}/s/${result.slug}`;
+        const shortUrlString = `${process.env.NEXT_PUBLIC_APP_URL}/${result.slug}`;
         return {
           shortUrl: shortUrlString,
           slug: result.slug,
@@ -123,7 +127,7 @@ export const shortUrlRouter = createTRPCRouter({
           });
         }
 
-        const shortUrlString = `${process.env.NEXT_PUBLIC_APP_URL}/s/${result.slug}`;
+        const shortUrlString = `${process.env.NEXT_PUBLIC_APP_URL}/${result.slug}`;
         return {
           shortUrl: shortUrlString,
           slug: result.slug,
@@ -145,4 +149,27 @@ export const shortUrlRouter = createTRPCRouter({
         });
       }
     }),
+
+  getUserUrls: protectedProcedure.query(async ({ ctx }) => {
+    const urls = await ctx.db.shortUrl.findMany({
+      where: {
+        createdById: ctx.session.user.id,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      select: {
+        id: true,
+        slug: true,
+        longUrl: true,
+        createdAt: true,
+        visits: true,
+      },
+    });
+
+    return urls.map((url) => ({
+      ...url,
+      shortUrl: `${process.env.NEXT_PUBLIC_APP_URL}/${url.slug}`,
+    }));
+  }),
 });

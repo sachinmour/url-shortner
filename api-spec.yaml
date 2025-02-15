@@ -1,0 +1,247 @@
+openapi: 3.0.0
+info:
+  title: URL Shortener API
+  description: |
+    API for managing shortened URLs. The API is split into two parts:
+    1. tRPC endpoints for URL management (/api/trpc/*)
+    2. Next.js routes for URL redirection (/{slug})
+  version: 1.0.0
+
+servers:
+  - url: "{baseUrl}"
+    variables:
+      baseUrl:
+        default: http://localhost:3000
+        description: Base URL of the application
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: next-auth.session-token
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          enum: [NOT_FOUND, CONFLICT, INTERNAL_SERVER_ERROR, UNAUTHORIZED]
+        message:
+          type: string
+
+    ShortUrl:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        longUrl:
+          type: string
+        shortUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        visits:
+          type: integer
+      required:
+        - id
+        - slug
+        - longUrl
+        - shortUrl
+        - createdAt
+        - visits
+
+paths:
+  /api/trpc/shortUrl.getBySlug:
+    post:
+      summary: Get URL by slug and increment visit count
+      operationId: getBySlug
+      tags:
+        - shortUrl
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                slug:
+                  type: string
+              required:
+                - slug
+      responses:
+        200:
+          description: URL details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShortUrl"
+        404:
+          description: URL not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/trpc/shortUrl.create:
+    post:
+      summary: Create a new shortened URL
+      operationId: create
+      tags:
+        - shortUrl
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                longUrl:
+                  type: string
+                  format: uri
+              required:
+                - longUrl
+      responses:
+        200:
+          description: URL shortened successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shortUrl:
+                    type: string
+                    format: uri
+                  slug:
+                    type: string
+                required:
+                  - shortUrl
+                  - slug
+        409:
+          description: Slug collision occurred
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/trpc/shortUrl.createWithCustomSlug:
+    post:
+      summary: Create a shortened URL with custom slug
+      operationId: createWithCustomSlug
+      security:
+        - sessionAuth: []
+      tags:
+        - shortUrl
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                longUrl:
+                  type: string
+                  format: uri
+                slug:
+                  type: string
+                  pattern: ^[a-zA-Z0-9-_]+$
+                  minLength: 3
+                  maxLength: 20
+                  description: |
+                    Custom slug for the short URL. Cannot use reserved paths like 
+                    'api', 'auth', 'login', etc.
+              required:
+                - longUrl
+                - slug
+      responses:
+        200:
+          description: URL shortened successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shortUrl:
+                    type: string
+                    format: uri
+                  slug:
+                    type: string
+                required:
+                  - shortUrl
+                  - slug
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        409:
+          description: Custom slug already taken or reserved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/trpc/shortUrl.getUserUrls:
+    post:
+      summary: Get all URLs created by the authenticated user
+      operationId: getUserUrls
+      security:
+        - sessionAuth: []
+      tags:
+        - shortUrl
+      responses:
+        200:
+          description: User's URLs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShortUrl"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /{slug}:
+    get:
+      summary: Redirect to the original URL
+      description: |
+        Redirects to the original URL associated with the given slug.
+        If the slug matches a reserved path (e.g., 'api', 'auth', 'login'), 
+        the request will be handled by the appropriate application route instead.
+      operationId: redirectToLongUrl
+      tags:
+        - redirect
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: |
+            The short URL identifier. If this matches a reserved path,
+            the request will be handled by that path instead of the URL shortener.
+      responses:
+        302:
+          description: Redirect to the original URL
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: The original URL to redirect to
+        404:
+          description: URL not found
+          content:
+            text/html:
+              schema:
+                type: string
+                description: 404 page HTML
