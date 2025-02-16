@@ -10,7 +10,7 @@ This URL shortener service demonstrates modern full-stack development practices 
 
 - **T3 Stack**: Chosen for its excellent developer experience and type safety across the full stack
 - **tRPC**: Enables end-to-end typesafe APIs without schema duplication
-- **NextAuth.js**: Provides secure, flexible authentication with multiple providers
+- **NextAuth.js**: Provides secure authentication
 - **Docker**: Ensures consistent development and production environments
 - **Rate Limiting**: Implements security best practices to prevent abuse
 
