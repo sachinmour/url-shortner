@@ -11,6 +11,7 @@ import {
 } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { checkRateLimit } from "~/server/ratelimit";
+import { getCachedUrl, setCachedUrl, deleteCachedUrl } from "~/server/redis";
 
 const createUrlSchema = z.object({
   longUrl: z.string().url(),
@@ -51,9 +52,12 @@ export const shortUrlRouter = createTRPCRouter({
         });
       }
 
-      await ctx.db.shortUrl.delete({
-        where: { slug: input.slug },
-      });
+      await Promise.all([
+        ctx.db.shortUrl.delete({
+          where: { slug: input.slug },
+        }),
+        deleteCachedUrl(input.slug),
+      ]);
 
       return { success: true };
     }),
@@ -68,15 +72,36 @@ export const shortUrlRouter = createTRPCRouter({
         "anonymous";
       const identifier = `redirect_${ip}`;
       await checkRateLimit(identifier);
+
       try {
+        // Check Redis cache first
+        const cachedLongUrl = await getCachedUrl(input.slug);
+        if (cachedLongUrl) {
+          // Update visit count in background
+          void ctx.db.shortUrl.update({
+            where: { slug: input.slug },
+            data: { visits: { increment: 1 } },
+          });
+
+          return {
+            slug: input.slug,
+            longUrl: cachedLongUrl,
+          };
+        }
+
+        // If not in cache, maybe get from database and cache it
         const shortUrl = await ctx.db.shortUrl.update({
           where: { slug: input.slug },
-          data: {
-            visits: { increment: 1 },
-          },
+          data: { visits: { increment: 1 } },
         });
 
-        return shortUrl;
+        // Cache only the long URL
+        void setCachedUrl(shortUrl.slug, shortUrl.longUrl);
+
+        return {
+          slug: shortUrl.slug,
+          longUrl: shortUrl.longUrl,
+        };
       } catch (error) {
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -105,16 +130,19 @@ export const shortUrlRouter = createTRPCRouter({
       const slug = nanoid(6); // 6 characters is a good balance between length and uniqueness
 
       try {
-        const result = await ctx.db.shortUrl.create({
-          data: {
-            slug,
-            longUrl: input.longUrl,
-            // If user is authenticated, associate the URL with them,
-            ...(ctx.session?.user
-              ? { createdBy: { connect: { id: ctx.session.user.id } } }
-              : {}),
-          },
-        });
+        const [result] = await Promise.all([
+          ctx.db.shortUrl.create({
+            data: {
+              slug,
+              longUrl: input.longUrl,
+              // If user is authenticated, associate the URL with them,
+              ...(ctx.session?.user
+                ? { createdBy: { connect: { id: ctx.session.user.id } } }
+                : {}),
+            },
+          }),
+          setCachedUrl(slug, input.longUrl),
+        ]);
 
         if (!result?.slug) {
           throw new TRPCError({
@@ -165,13 +193,16 @@ export const shortUrlRouter = createTRPCRouter({
           });
         }
 
-        const result = await ctx.db.shortUrl.create({
-          data: {
-            slug: input.slug,
-            longUrl: input.longUrl,
-            createdBy: { connect: { id: ctx.session.user.id } },
-          },
-        });
+        const [result] = await Promise.all([
+          ctx.db.shortUrl.create({
+            data: {
+              slug: input.slug,
+              longUrl: input.longUrl,
+              createdBy: { connect: { id: ctx.session.user.id } },
+            },
+          }),
+          setCachedUrl(input.slug, input.longUrl),
+        ]);
 
         if (!result?.slug) {
           throw new TRPCError({

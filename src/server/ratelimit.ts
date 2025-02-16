@@ -1,16 +1,15 @@
-import Redis from "ioredis";
 import { TRPCError } from "@trpc/server";
-import { env } from "~/env";
+import { redis } from "./redis";
 
-const redis = new Redis(env.REDIS_URL);
-
+// Rate limit configuration
 const WINDOW_SIZE = 10; // 10 seconds
 const MAX_REQUESTS = 10; // 10 requests per window
+const RATE_LIMIT_PREFIX = "ratelimit:";
 
 export async function checkRateLimit(identifier: string): Promise<void> {
   const now = Math.floor(Date.now() / 1000); // Current time in seconds
   const windowStart = now - WINDOW_SIZE;
-  const key = `ratelimit:${identifier}`;
+  const key = `${RATE_LIMIT_PREFIX}${identifier}`;
 
   // Remove old requests and add new request
   await redis
