@@ -5,6 +5,26 @@ info:
     API for managing shortened URLs. The API is split into two parts:
     1. tRPC endpoints for URL management (/api/trpc/*)
     2. Next.js routes for URL redirection (/{slug})
+
+    Note: All endpoints are protected by rate limiting to prevent abuse.
+
+    tRPC Request Format:
+    All tRPC requests must include `batch=1` query parameter and follow this format:
+    ```
+    {
+      "0": {
+        "json": {
+          // actual parameters here
+        }
+      }
+    }
+    ```
+
+    Example:
+    ```bash
+    curl 'http://localhost:3000/api/trpc/shortUrl.create?batch=1' \
+      --data-raw '{"0":{"json":{"longUrl":"https://www.example.com/"}}}'
+    ```
   version: 1.0.0
 
 servers:
@@ -27,7 +47,14 @@ components:
       properties:
         code:
           type: string
-          enum: [NOT_FOUND, CONFLICT, INTERNAL_SERVER_ERROR, UNAUTHORIZED]
+          enum:
+            [
+              NOT_FOUND,
+              CONFLICT,
+              INTERNAL_SERVER_ERROR,
+              UNAUTHORIZED,
+              FORBIDDEN,
+            ]
         message:
           type: string
 
@@ -62,6 +89,14 @@ paths:
       operationId: getBySlug
       tags:
         - shortUrl
+      description: Rate limited based on IP address
+      parameters:
+        - name: batch
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: ["1"]
       requestBody:
         required: true
         content:
@@ -69,10 +104,20 @@ paths:
             schema:
               type: object
               properties:
-                slug:
-                  type: string
+                "0":
+                  type: object
+                  properties:
+                    json:
+                      type: object
+                      properties:
+                        slug:
+                          type: string
+                      required:
+                        - slug
+                  required:
+                    - json
               required:
-                - slug
+                - "0"
       responses:
         200:
           description: URL details retrieved successfully
@@ -86,6 +131,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        429:
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /api/trpc/shortUrl.create:
     post:
@@ -93,6 +144,14 @@ paths:
       operationId: create
       tags:
         - shortUrl
+      description: Rate limited based on IP address or user ID if authenticated
+      parameters:
+        - name: batch
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: ["1"]
       requestBody:
         required: true
         content:
@@ -100,11 +159,21 @@ paths:
             schema:
               type: object
               properties:
-                longUrl:
-                  type: string
-                  format: uri
+                "0":
+                  type: object
+                  properties:
+                    json:
+                      type: object
+                      properties:
+                        longUrl:
+                          type: string
+                          format: uri
+                      required:
+                        - longUrl
+                  required:
+                    - json
               required:
-                - longUrl
+                - "0"
       responses:
         200:
           description: URL shortened successfully
@@ -127,6 +196,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        429:
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /api/trpc/shortUrl.createWithCustomSlug:
     post:
@@ -136,6 +211,14 @@ paths:
         - sessionAuth: []
       tags:
         - shortUrl
+      description: Rate limited based on user ID
+      parameters:
+        - name: batch
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: ["1"]
       requestBody:
         required: true
         content:
@@ -143,20 +226,30 @@ paths:
             schema:
               type: object
               properties:
-                longUrl:
-                  type: string
-                  format: uri
-                slug:
-                  type: string
-                  pattern: ^[a-zA-Z0-9-_]+$
-                  minLength: 3
-                  maxLength: 20
-                  description: |
-                    Custom slug for the short URL. Cannot use reserved paths like 
-                    'api', 'auth', 'login', etc.
+                "0":
+                  type: object
+                  properties:
+                    json:
+                      type: object
+                      properties:
+                        longUrl:
+                          type: string
+                          format: uri
+                        slug:
+                          type: string
+                          pattern: ^[a-zA-Z0-9-_]+$
+                          minLength: 3
+                          maxLength: 20
+                          description: |
+                            Custom slug for the short URL. Cannot use reserved paths like 
+                            'api', 'auth', 'login', etc.
+                      required:
+                        - longUrl
+                        - slug
+                  required:
+                    - json
               required:
-                - longUrl
-                - slug
+                - "0"
       responses:
         200:
           description: URL shortened successfully
@@ -185,6 +278,79 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        429:
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/trpc/shortUrl.delete:
+    post:
+      summary: Delete a shortened URL
+      operationId: delete
+      security:
+        - sessionAuth: []
+      tags:
+        - shortUrl
+      parameters:
+        - name: batch
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: ["1"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                "0":
+                  type: object
+                  properties:
+                    json:
+                      type: object
+                      properties:
+                        slug:
+                          type: string
+                      required:
+                        - slug
+                  required:
+                    - json
+              required:
+                - "0"
+      responses:
+        200:
+          description: URL deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required:
+                  - success
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        403:
+          description: Forbidden - Can only delete own URLs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        404:
+          description: URL not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /api/trpc/shortUrl.getUserUrls:
     post:
@@ -194,6 +360,29 @@ paths:
         - sessionAuth: []
       tags:
         - shortUrl
+      parameters:
+        - name: batch
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: ["1"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                "0":
+                  type: object
+                  properties:
+                    json:
+                      type: object
+                  required:
+                    - json
+              required:
+                - "0"
       responses:
         200:
           description: User's URLs retrieved successfully
@@ -217,6 +406,8 @@ paths:
         Redirects to the original URL associated with the given slug.
         If the slug matches a reserved path (e.g., 'api', 'auth', 'login'), 
         the request will be handled by the appropriate application route instead.
+
+        Note: This endpoint is rate-limited based on IP address to prevent abuse.
       operationId: redirectToLongUrl
       tags:
         - redirect
@@ -245,3 +436,9 @@ paths:
               schema:
                 type: string
                 description: 404 page HTML
+        429:
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
