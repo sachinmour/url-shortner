@@ -11,15 +11,13 @@ services:
       - /app/.next
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://urlshortener:development@postgres:5432/urlshortener
+      - DATABASE_URL=postgres://urlshortener:development@postgres:5432/urlshortener
       - NEXT_PUBLIC_APP_URL=http://localhost:3000
       - REDIS_URL=redis://redis:6379
       - AUTH_SECRET=2zlB6jZdPPjsyT8z7p+ugNmgNIvT4iMGdgbY+uIP04A=
       - AUTH_URL=http://localhost:3000
       - EMAIL_SERVER_HOST=mailhog
       - EMAIL_SERVER_PORT=1025
-      - EMAIL_SERVER_USER=
-      - EMAIL_SERVER_PASSWORD=
       - EMAIL_FROM=noreply@sachinmour.com
       - WATCHPACK_POLLING=true
       - CHOKIDAR_USEPOLLING=true

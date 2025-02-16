@@ -1,29 +1,72 @@
-# Create T3 App
+# URL Shortener
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+A modern URL shortening service built with the T3 Stack (Next.js, TypeScript, tRPC, Prisma, NextAuth.js, and Tailwind CSS).
 
-## What's next? How do I make an app with this?
+## Features
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+- ✂️ URL Shortening with custom slug support
+- 🔒 User Authentication
+- 📊 URL visit tracking
+- 📋 Copy to clipboard functionality
+- 🛡️ Rate limiting
+- 📱 Responsive design
+- 🎨 Modern UI with Tailwind CSS
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## Getting Started
 
+### Prerequisites
+
+- Docker and Docker Compose
+- Node.js 22+ (for local development)
+
+### Running with Docker
+
+To start the application in production mode:
+
+```bash
+npm run docker:prod
+```
+
+This will start all required services:
+
+- Web application
+- PostgreSQL database
+- MailHog (for email testing)
+
+### Email Testing
+
+This project uses MailHog for email testing in development. No real emails are sent - instead, you can view all emails in the MailHog web interface:
+
+#### Local Development
+
+1. Start the application using the Docker command above
+2. Open [http://localhost:8025](http://localhost:8025) in your browser
+3. You'll see all emails sent by the application (signup, password reset, etc.)
+
+#### Live Environment
+
+For the live deployment, you can view emails at [https://mailhog-latest-xiqq.onrender.com/](https://mailhog-latest-xiqq.onrender.com/)
+
+## Live Demo
+
+The application is deployed and available at [deeporigin.sachinmour.com](https://deeporigin.sachinmour.com)
+
+### Development
+
+For local development:
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Start the development environment: `npm run docker:dev`
+4. The application will be available at [http://localhost:3000](http://localhost:3000)
+
+## Tech Stack
+
+- [T3 Stack](https://create.t3.gg/)
 - [Next.js](https://nextjs.org)
 - [NextAuth.js](https://next-auth.js.org)
 - [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
 - [Tailwind CSS](https://tailwindcss.com)
 - [tRPC](https://trpc.io)
-
-## Learn More
-
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
-
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
-
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
-
-## How do I deploy this?
-
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+- [TypeScript](https://typescriptlang.org)
+- [Docker](https://www.docker.com/)

@@ -26,6 +26,9 @@ RUN npx prisma generate
 # Copy application code
 COPY . .
 
+# Set environment variables for build
+ENV SKIP_ENV_VALIDATION=1
+
 # Build application
 RUN npm run build
 
@@ -33,6 +36,11 @@ RUN npm run build
 FROM node:22-alpine AS runner
 
 WORKDIR /app
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache \
+    openssl \
+    openssl-dev
 
 # Copy prisma schema
 COPY prisma ./prisma/
@@ -47,7 +55,9 @@ RUN npx prisma generate
 # Copy built application from builder
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.mjs ./
+COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/scripts ./scripts
 
 # Set environment variables
 ENV NODE_ENV=production
@@ -56,5 +66,5 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Expose port 3000
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"]
+# Start the application with database check
+CMD ["sh", "-c", "chmod +x ./scripts/wait-for-db.sh && ./scripts/wait-for-db.sh npm start"]

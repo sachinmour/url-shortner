@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { env } from "~/env";
 import { nanoid } from "nanoid";
 import { Prisma } from "@prisma/client";
 import { isReservedSlug } from "~/utils/reserved-slugs";
@@ -67,21 +68,27 @@ export const shortUrlRouter = createTRPCRouter({
         "anonymous";
       const identifier = `redirect_${ip}`;
       await checkRateLimit(identifier);
-      const shortUrl = await ctx.db.shortUrl.update({
-        where: { slug: input.slug },
-        data: {
-          visits: { increment: 1 },
-        },
-      });
-
-      if (!shortUrl) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Short URL not found",
+      try {
+        const shortUrl = await ctx.db.shortUrl.update({
+          where: { slug: input.slug },
+          data: {
+            visits: { increment: 1 },
+          },
         });
-      }
 
-      return shortUrl;
+        return shortUrl;
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2025"
+        ) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Short URL not found",
+          });
+        }
+        throw error;
+      }
     }),
 
   create: publicProcedure
@@ -116,7 +123,7 @@ export const shortUrlRouter = createTRPCRouter({
           });
         }
 
-        const shortUrlString = `${process.env.NEXT_PUBLIC_APP_URL}/${result.slug}`;
+        const shortUrlString = `${env.NEXT_PUBLIC_APP_URL}/${result.slug}`;
         return {
           shortUrl: shortUrlString,
           slug: result.slug,
@@ -173,7 +180,7 @@ export const shortUrlRouter = createTRPCRouter({
           });
         }
 
-        const shortUrlString = `${process.env.NEXT_PUBLIC_APP_URL}/${result.slug}`;
+        const shortUrlString = `${env.NEXT_PUBLIC_APP_URL}/${result.slug}`;
         return {
           shortUrl: shortUrlString,
           slug: result.slug,
@@ -215,7 +222,7 @@ export const shortUrlRouter = createTRPCRouter({
 
     return urls.map((url) => ({
       ...url,
-      shortUrl: `${process.env.NEXT_PUBLIC_APP_URL}/${url.slug}`,
+      shortUrl: `${env.NEXT_PUBLIC_APP_URL}/${url.slug}`,
     }));
   }),
 });

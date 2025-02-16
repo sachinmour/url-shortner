@@ -30,7 +30,7 @@ export function UrlActions({ shortUrl, slug, onDelete }: UrlActionsProps) {
       setIsCopying(true);
       await navigator.clipboard.writeText(shortUrl);
       toast.success("Copied to clipboard!");
-    } catch (err) {
+    } catch {
       toast.error("Failed to copy to clipboard");
     } finally {
       setIsCopying(false);

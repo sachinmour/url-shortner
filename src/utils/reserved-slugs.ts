@@ -9,6 +9,7 @@ export const RESERVED_SLUGS = new Set([
   "profile",
   "settings",
   "404",
+  "not-found",
   // API routes
   "trpc",
   // Special routes

@@ -1,14 +1,11 @@
 import Redis from "ioredis";
 import { TRPCError } from "@trpc/server";
+import { env } from "~/env";
 
-if (!process.env.REDIS_URL) {
-  throw new Error("REDIS_URL is not configured in environment variables");
-}
-
-const redis = new Redis(process.env.REDIS_URL);
+const redis = new Redis(env.REDIS_URL);
 
 const WINDOW_SIZE = 10; // 10 seconds
-const MAX_REQUESTS = 1; // 10 requests per window
+const MAX_REQUESTS = 10; // 10 requests per window
 
 export async function checkRateLimit(identifier: string): Promise<void> {
   const now = Math.floor(Date.now() / 1000); // Current time in seconds
