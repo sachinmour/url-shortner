@@ -108,8 +108,8 @@ Note: This project currently uses basic environment variable handling for demons
 ### Performance Optimizations
 
 - **Redis Cache**: Implement Redis for:
-  - Caching slug to URL mappings for faster redirects
-  - Rate limiting implementation
+  - Distributed Caching slug to URL mappings for faster redirects
+  - Distributed Rate limiting implementation
   - Session management
 - **CDN Integration**: Use a CDN for global distribution and faster redirects
 - **Database Optimization**:
